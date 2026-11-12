@@ -6,5 +6,9 @@ venv/
 __pycache__/
 *.pyc
 
+# Arsip paket fasilitator (isinya sudah diekstrak ke models/)
+models.zip
+__MACOSX/
+
 # Streamlit secrets (jangan pernah di-push)
 .streamlit/secrets.toml

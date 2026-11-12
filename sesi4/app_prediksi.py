@@ -26,6 +26,18 @@ def get_meta():
 
 model, meta = get_model(), get_meta()
 
+# LATIHAN 1: threshold keputusan diatur lewat slider di sidebar (0,3–0,7).
+# Metadata asli tidak diubah; dibuat salinan dengan threshold baru untuk dipakai predict().
+st.sidebar.header("⚙️ Pengaturan prediksi")
+threshold = st.sidebar.slider(
+    "Threshold keputusan", 0.3, 0.7, float(meta["decision_threshold"]), step=0.05,
+    help="Probabilitas ≥ threshold dianggap 'Churn'. Default model: "
+         f"{meta['decision_threshold']}",
+)
+meta = {**meta, "decision_threshold": threshold}
+st.sidebar.caption("Threshold hanya mengubah kelas prediksi (Churn/Bertahan). "
+                   "Kategori risiko tetap memakai risk bins model.")
+
 st.title("🔮 Prediksi Risiko Churn Pelanggan")
 with st.expander("ℹ️ Informasi model final", expanded=False):
     st.write(f"**{meta['model_name']}** · versi {meta['model_version']} · {meta['algorithm']}")
@@ -100,11 +112,16 @@ with tab_batch:
         st.stop()
 
     hasil = predict(model, data, meta)
-    k1, k2, k3, k4 = st.columns(4)
+    k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Pelanggan diproses", f"{len(hasil):,}")
-    k2.metric("Prediksi churn", f"{hasil.predicted_churn.sum():,}")
+    k2.metric("Prediksi churn", f"{hasil.predicted_churn.sum():,}",
+              help=f"Memakai threshold {threshold:.2f} dari sidebar")
     k3.metric("Rata-rata probabilitas", f"{hasil.churn_probability.mean():.1%}")
     k4.metric("Risiko tinggi", f"{(hasil.risk_category == 'Tinggi').sum():,}")
+    # LATIHAN 4: potensi pendapatan berisiko = total monthly_charges pelanggan kategori Tinggi
+    pendapatan_berisiko = hasil.loc[hasil.risk_category == "Tinggi", "monthly_charges"].sum()
+    k5.metric("Pendapatan berisiko / bulan", f"Rp{pendapatan_berisiko:,.0f}".replace(",", "."),
+              help="Jumlah tagihan bulanan pelanggan berkategori risiko Tinggi")
 
     RISK_COLOR = {"Rendah": "#1baf7a", "Sedang": "#eda100", "Tinggi": "#e34948"}
     a, b = st.columns(2)
@@ -119,6 +136,15 @@ with tab_batch:
     bar.update_yaxes(tickformat=".0%")
     b.plotly_chart(bar.update_layout(height=330, template="plotly_white", xaxis_title=""),
                    width="stretch")
+
+    # LATIHAN 3: ringkasan jumlah pelanggan per region × risk_category
+    st.markdown("**Jumlah pelanggan per region × kategori risiko**")
+    ct = pd.crosstab(hasil["region"], hasil["risk_category"], margins=True, margins_name="Total")
+    ct = ct.reindex(columns=[c for c in ["Rendah", "Sedang", "Tinggi", "Total"] if c in ct.columns])
+    gaya_ct = ct.style
+    if "Tinggi" in ct.columns:  # sorot kolom risiko tinggi (baris Total tidak ikut diwarnai)
+        gaya_ct = gaya_ct.background_gradient(cmap="Reds", subset=(ct.index.drop("Total"), ["Tinggi"]))
+    st.dataframe(gaya_ct, width="stretch")
 
     risiko = st.multiselect("Tampilkan kategori risiko", ["Tinggi", "Sedang", "Rendah"],
                             default=["Tinggi"])
