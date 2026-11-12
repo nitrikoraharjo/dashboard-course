@@ -8,6 +8,7 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))  # agar folder utils bisa di-import
+from utils.eda_churn import render_eda  # noqa: E402
 from utils.model_utils import load_metadata, load_model, predict, validate_input  # noqa: E402
 
 st.set_page_config(page_title="Prediksi Churn", page_icon="🔮", layout="wide")
@@ -47,7 +48,14 @@ with st.expander("ℹ️ Informasi model final", expanded=False):
     st.caption("Model tidak dilatih ulang di aplikasi ini; aplikasi hanya melakukan inference.")
 
 COLOR = {"Rendah": "🟢", "Sedang": "🟡", "Tinggi": "🔴"}
-tab_single, tab_batch = st.tabs(["👤 Prediksi satu pelanggan", "📂 Prediksi batch (CSV)"])
+tab_eda, tab_single, tab_batch = st.tabs(
+    ["📊 EDA", "👤 Prediksi satu pelanggan", "📂 Prediksi batch (CSV)"]
+)
+
+# 0) EDA DATA HISTORIS — dari Sesi 2 (utils/eda_churn.py)
+# Diletakkan sebelum tab batch karena tab batch bisa memanggil st.stop().
+with tab_eda:
+    render_eda()
 
 # 2) PREDIKSI SATU PELANGGAN — input lewat form
 with tab_single:
